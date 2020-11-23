@@ -1,0 +1,91 @@
+             PGM        PARM(&NOMLIB &NOMFIL &NOMCAM &CRITCAM &LIBFPRPGM +
+                          &FPRPGM &RETCOD &RETMSG)
+
+             DCLF       FILE(CFGDSP00V) RCDFMT(FPRCSBMJOB) OPNID(V)
+             DCLF       FILE(DSPFD00F) OPNID(F)
+
+             DCL        VAR(&NOMLIB) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&NOMFIL) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&NOMCAM) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&LIBFPRPGM) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&FPRPGM) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&NOMCAM) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&CRITCAM) TYPE(*CHAR) LEN(1)
+             DCL        VAR(&RETCOD) TYPE(*LGL)
+             DCL        VAR(&RETMSG) TYPE(*CHAR) LEN(80)
+
+             DCL        VAR(&HHMMSS) TYPE(*CHAR) LEN(6)
+             DCL        VAR(&DATA) TYPE(*CHAR)  LEN(6)
+
+             RTVSYSVAL  SYSVAL(QDATE) RTNVAR(&DATA)
+             RTVSYSVAL  SYSVAL(QTIME) RTNVAR(&HHMMSS)
+
+             DSPFD      FILE(&NOMLIB/&NOMFIL) TYPE(*MBR) +
+                          OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPFD00F)
+
+             RCVF       OPNID(F)
+             IF         COND(&F_MBDSSZ > 500000) THEN(DO)
+             DOWHILE    COND(&V_IN12 = '0')
+
+             CHGVAR     VAR(&V_S_DATA) VALUE(&DATA)
+             CHGVAR     VAR(&V_S_HHMMSS) VALUE(&HHMMSS)
+             CHGVAR     VAR(&V_S_SIZE) VALUE(&F_MBDSSZ)
+             SNDRCVF    RCDFMT(FPRCSBMJOB) OPNID(V)
+             IF         COND(&V_IN12 = '0' ) THEN(DO)
+
+             IF         COND(&V_S_IMMED = 'S') THEN(DO)
+
+             IF         COND(&V_S_JOBNOM *EQ *BLANKS) THEN(DO)
+             CHGVAR     VAR(&V_IN90) VALUE('1')
+             CHGVAR     VAR(&V_S_ERRMSG) VALUE('Nome job +
+                          obbligatorio.')
+             ITERATE
+             ENDDO
+             ELSE       CMD(DO)
+             SBMJOB     CMD(CALL PGM(SETFPR00C) PARM(&NOMLIB &NOMFIL +
+                          &NOMCAM &CRITCAM &LIBFPRPGM &FPRPGM)) JOB(&V_S_JOBNOM)
+             CHGVAR     VAR(&RETCOD) VALUE('0')
+             CHGVAR     VAR(&RETMSG) VALUE('Lavoro sottomesso in batch.')
+             CHGVAR     VAR(&V_IN12) VALUE('1')
+             CHGVAR     VAR(&CRITCAM) VALUE('W')
+             ENDDO
+
+             ENDDO
+             ELSE       CMD(DO)
+
+ /*verifica data inserita inferiore a quella odierna   */
+             IF         COND(&V_S_DATA *LT %DEC(&DATA 8 0)) THEN(DO)
+             CHGVAR     VAR(&V_IN90) VALUE('1')
+             CHGVAR     VAR(&V_S_ERRMSG) VALUE('Data inferiore a quella +
+                          odierna.')
+             ITERATE
+             ENDDO
+
+ /*Se data uguale a quella odierna verifico ora inserita */
+             IF         COND((&V_S_DATA *EQ %DEC(&DATA 8 0)) *AND +
+                            (&V_S_HHMMSS *LE %DEC(&HHMMSS 6 0))) THEN(DO)
+             CHGVAR     VAR(&V_IN90) VALUE('1')
+             CHGVAR     VAR(&V_S_ERRMSG) VALUE('Ora inferiore a quella +
+                          attuale.')
+             ITERATE
+             ENDDO
+             ADDJOBSCDE JOB(&V_S_JOBNOM) CMD(CALL PGM(ALBERTOOBJ/SETFPR00C) +
+                          PARM(&NOMLIB &NOMFIL &NOMCAM &CRITCAM +
+                          &LIBFPRPGM &FPRPGM)) +
+                          FRQ(*ONCE) +
+                          SCDDATE(%CHAR(&V_S_DATA)) +
+                          SCDTIME(%CHAR(&V_S_HHMMSS))
+             CHGVAR     VAR(&RETCOD) VALUE('0')
+             CHGVAR     VAR(&RETMSG) VALUE('Lavoro schedulato corretamente.')
+             CHGVAR     VAR(&V_IN12) VALUE('1')
+             CHGVAR     VAR(&CRITCAM) VALUE('W')
+
+             ENDDO
+
+             ENDDO
+
+
+             ENDDO
+             ENDDO
+
+             ENDPGM
