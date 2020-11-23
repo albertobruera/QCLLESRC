@@ -1,0 +1,76 @@
+             PGM        PARM(&NOMLIB &NOMFIL &NOMCAMPO &CRITCAM &LIBFPRPGM +
+                          &FPRPGM)
+
+             DCL        VAR(&NOMLIB) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&NOMFIL) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&NOMCAMPO) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&CRITCAM) TYPE(*CHAR) LEN(1)
+             DCL        VAR(&LIBFPRPGM) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&FPRPGM) TYPE(*CHAR) LEN(10)
+
+             DCL        VAR(&CMD) TYPE(*CHAR) LEN(256)
+             DCL        VAR(&APICE) TYPE(*CHAR) LEN(1) VALUE('''')
+
+             ADDLIBLE   LIB(CRYPTMSK0D)
+             MONMSG     MSGID(CPF0000)
+
+             IF         COND(&CRITCAM = 'S') THEN(DO)
+
+             CHGVAR     VAR(&CMD) VALUE('ALTER TABLE ' *CAT +
+                          &NOMLIB *TCAT   '/' *TCAT &NOMFIL *CAT +
+                          ' ALTER COLUMN ' *CAT &NOMCAMPO *TCAT ' +
+                          SET FIELDPROC ' *CAT &LIBFPRPGM *TCAT +
+                          '/' *TCAT &FPRPGM)
+
+             RUNSQL     SQL(&CMD) COMMIT(*NONE)
+             MONMSG     MSGID(CPF0000) EXEC(DO)
+             SNDPGMMSG  MSG('SET FIELDPROC CONCLUSA CON ERRORI. +
+                          VERIFICARE')
+             GOTO       CMDLBL(END)
+             ENDDO
+
+             CHGVAR     VAR(&CMD) VALUE('UPDATE FILLST00F ' *CAT ' +
+                          SET FL_CRITCAM = ' *TCAT &APICE *TCAT 'S' +
+                          *CAT &APICE *CAT ' WHERE FL_LIB = ' *CAT +
+                          &APICE *TCAT &NOMLIB *CAT &APICE *CAT ' +
+                          AND FL_FILE = ' *CAT &APICE *TCAT +
+                          &NOMFIL *CAT &APICE *CAT ' AND FL_CAMPO = ' +
+                          *CAT &APICE *TCAT &NOMCAMPO *TCAT &APICE)
+             RUNSQL     SQL(&CMD) COMMIT(*NONE)
+             MONMSG     MSGID(CPF0000) EXEC(DO)
+             SNDPGMMSG  MSG('UPDATE FILLST00F CONCLUSA CON ERRORI. +
+                          VERIFICARE')
+             GOTO       CMDLBL(END)
+             ENDDO
+             ENDDO
+
+             ELSE CMD(DO)
+
+             CHGVAR     VAR(&CMD) VALUE('ALTER TABLE ' *CAT +
+                          &NOMLIB *TCAT   '/' *TCAT &NOMFIL *CAT +
+                          ' ALTER COLUMN ' *CAT &NOMCAMPO *TCAT ' +
+                          DROP FIELDPROC ')
+
+             RUNSQL     SQL(&CMD) COMMIT(*NONE)
+             MONMSG     MSGID(CPF0000) EXEC(DO)
+             SNDPGMMSG  MSG('SET FIELDPROC CONCLUSA CON ERRORI. +
+                          VERIFICARE')
+             GOTO       CMDLBL(END)
+             ENDDO
+
+             CHGVAR     VAR(&CMD) VALUE('UPDATE FILLST00F ' *CAT ' +
+                          SET FL_CRITCAM = ' *TCAT &APICE *TCAT 'N' +
+                          *CAT &APICE *CAT ' WHERE FL_LIB = ' *TCAT +
+                          &APICE *TCAT &NOMLIB *CAT &APICE *CAT ' +
+                          AND FL_FILE = ' *TCAT &APICE *TCAT +
+                          &NOMFIL *CAT &APICE *CAT ' AND FL_CAMPO = +
+                          ' *CAT &APICE *TCAT &NOMCAMPO *TCAT &APICE)
+             RUNSQL     SQL(&CMD) COMMIT(*NONE)
+             MONMSG     MSGID(CPF0000) EXEC(DO)
+             SNDPGMMSG  MSG('UPDATE FILLST00F CONCLUSA CON ERRORI. +
+                          VERIFICARE')
+             GOTO       CMDLBL(END)
+             ENDDO
+
+             ENDDO
+ END:        ENDPGM
